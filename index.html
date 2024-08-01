@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech to Text</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8eaf5;
+            text-align: center;
+        }
+        .container {
+            width: 50%;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f2c7eb;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            background-color: #be5bb1;
+            color: white;
+            border-radius: 5px;
+        }
+        textarea {
+            width: 80%;
+            height: 200px;
+            margin: 20px auto;
+            padding: 10px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Speech to Text</h2>
+        <button id="startRecording">Start Recording</button>
+        <button id="stopRecording" disabled>Stop Recording</button>
+        <textarea id="output" placeholder="Transcribed text here" readonly></textarea>
+        <button id="saveText">Save</button>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var recognizing = false;
+            var recognition = new webkitSpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+
+            recognition.onstart = function() {
+                recognizing = true;
+            };
+
+            recognition.onerror = function(event) {
+                console.error(event.error);
+            };
+
+            recognition.onend = function() {
+                recognizing = false;
+            };
+
+            recognition.onresult = function(event) {
+                var interim_transcript = '';
+                for (var i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        document.getElementById('output').value = event.results[i][0].transcript;
+                    } else {
+                        interim_transcript += event.results[i][0].transcript;
+                        document.getElementById('output').value = interim_transcript;
+                    }
+                }
+            };
+
+            document.getElementById('startRecording').addEventListener('click', function() {
+                if (!recognizing) {
+                    recognition.start();
+                    document.getElementById('stopRecording').disabled = false;
+                    document.getElementById('startRecording').disabled = true;
+                }
+            });
+
+            document.getElementById('stopRecording').addEventListener('click', function() {
+                recognition.stop();
+                document.getElementById('stopRecording').disabled = true;
+                document.getElementById('startRecording').disabled = false;
+            });
+
+            document.getElementById('saveText').addEventListener('click', function() {
+                var text = document.getElementById('output').value;
+                if (!text) {
+                    alert('No text to save.');
+                    return;
+                }
+
+                fetch('save_text.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `text=${encodeURIComponent(text)}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Text saved successfully.');
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            });
+        });
+    </script>
+</body>
+</html>
